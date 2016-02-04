@@ -16,31 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-subprojects {
-  apply plugin: 'maven-publish'
+package org.apache.samza.test.harness;
 
-  publishing {
-    publications {
-      mavenJava(MavenPublication) {
-        from components.java
-        if(project.name == 'samza-shell') {
-          artifact shellTarGz {
-            classifier "dist"
-          }
-        }
-     }
-    }
-  }
+import org.apache.samza.system.OutgoingMessageEnvelope;
 
-  publishing{
-    repositories{
-      maven{
-        credentials {
-          username 'admin'
-          password '1nd1x!@#$%^'
-        }
-        url "http://artifacts.indix.tv:8081/artifactory/libs-release-local/"
-      }
-    }
-  }
+/**
+ * A MessageCollectorListener interface provides the Samza Task Author
+ * with a granular hook to Outgoing messages sent and stored in the
+ * collector.
+ * onMessageAdded can be defined to include assertions and tests.
+ */
+public interface MessageCollectorListener {
+  public void onMessageAdded(OutgoingMessageEnvelope envelope);
 }
+

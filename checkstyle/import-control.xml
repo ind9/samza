@@ -201,6 +201,13 @@
             <allow pkg="org.apache.samza.task" />
             <allow pkg="org.apache.samza.util" />
         </subpackage>
+        <subpackage name="harness">
+            <allow pkg="org.apache.samza.config" />
+            <allow pkg="org.apache.samza.metrics" />
+            <allow pkg="org.apache.samza.system" />
+            <allow pkg="org.apache.samza.task" />
+            <allow pkg="org.apache.samza.container" />
+        </subpackage>
     </subpackage>
 
 
