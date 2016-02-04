@@ -27,17 +27,18 @@ import org.apache.samza.util.ExponentialSleepStrategy.RetryLoop
 /**
  * Encapsulates the pattern of retrying an operation until it succeeds.
  * Before every retry there is a delay, which starts short and gets exponentially
- * longer on each retry, up to a configurable maximum. There is no limit to the
- * number of retries.
+ * longer on each retry, up to a configurable maximum. The number of retries = maxAttempts (default 8)
  *
  * @param backOffMultiplier The factor by which the delay increases on each retry.
  * @param initialDelayMs Time in milliseconds to wait after the first attempt failed.
  * @param maximumDelayMs Cap up to which we will increase the delay.
+ * @param maxAttempts Maximum number of retries (default 8)
  */
 class ExponentialSleepStrategy(
     backOffMultiplier: Double = 2.0,
     initialDelayMs: Long = 100,
-    maximumDelayMs: Long = 10000) {
+    maximumDelayMs: Long = 10000,
+    maxAttempts: Long = 8) {
 
   require(backOffMultiplier > 1.0, "backOffMultiplier must be greater than 1")
   require(initialDelayMs > 0, "initialDelayMs must be positive")
@@ -88,7 +89,8 @@ class ExponentialSleepStrategy(
         case e: StackOverflowError         => throw e
         case e: Exception                  => onException(e, loop)
       }
-      if (!loop.isDone && !Thread.currentThread.isInterrupted) loop.sleep
+      if (!loop.isDone && !loop.canRetry(maxAttempts)) throw new RuntimeException(s"All retries failed, ${maxAttempts}")
+      if (!loop.isDone && !Thread.currentThread.isInterrupted){loop.incrementAttempt; loop.sleep}
     }
     None
   }
@@ -97,6 +99,7 @@ class ExponentialSleepStrategy(
     var previousDelay = 0L
     var isDone = false
     var sleepCount = 0
+    var noOfAttempts = 0
 
     def sleep {
       sleepCount += 1
@@ -113,6 +116,10 @@ class ExponentialSleepStrategy(
     def done {
       isDone = true
     }
+
+    def canRetry(maxAttempts:Long) = maxAttempts == -1 || maxAttempts >= noOfAttempts
+
+    def incrementAttempt = noOfAttempts = 0
   }
 }
 
@@ -136,6 +143,10 @@ object ExponentialSleepStrategy {
 
     /** Returns the number of times that the retry loop has called <code>sleep</code>. */
     def sleepCount: Int
+
+    def incrementAttempt: Unit
+
+    def canRetry(maxAttempts:Long): Boolean
   }
 
   /** For tests using ExponentialSleepStrategy.Mock */
@@ -156,6 +167,8 @@ object ExponentialSleepStrategy {
       def sleep { sleepCount += 1; if (sleepCount > maxCalls) throw new CallLimitReached }
       def reset { isDone = false }
       def done  { isDone = true  }
+      def incrementAttempt {}
+      def canRetry(maxAttempts:Long) = true
     }
   }
 }
