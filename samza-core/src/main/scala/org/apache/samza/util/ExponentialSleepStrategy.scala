@@ -119,7 +119,7 @@ class ExponentialSleepStrategy(
 
     def canRetry(maxAttempts:Long) = maxAttempts == -1 || maxAttempts >= noOfAttempts
 
-    def incrementAttempt = noOfAttempts = 0
+    def incrementAttempt = noOfAttempts = noOfAttempts + 1
   }
 }
 
