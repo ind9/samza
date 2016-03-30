@@ -252,11 +252,11 @@ private[kafka] class KafkaSystemConsumer(
     def needsMoreMessages(tp: TopicAndPartition) = {
       if(fetchLimitByBytesEnabled) {
         val pendingBytesInQueue: Long = getMessagesSizeInQueue(toSystemStreamPartition(tp))
-        logger.info(s"*** $systemName => $tp : Pending bytes in queue: ${pendingBytesInQueue}, ${perPartitionFetchThresholdBytes}")
+        logger.debug(s"*** $systemName => $tp : Pending bytes in queue: ${pendingBytesInQueue}, ${perPartitionFetchThresholdBytes}")
         pendingBytesInQueue < perPartitionFetchThresholdBytes
       } else {
         val queueSize: Int = getNumMessagesInQueue(toSystemStreamPartition(tp))
-        logger.info(s"*** $systemName => $tp : Pending queue size: ${queueSize}, ${perPartitionFetchThreshold}")
+        logger.debug(s"*** $systemName => $tp : Pending queue size: ${queueSize}, ${perPartitionFetchThreshold}")
         queueSize < perPartitionFetchThreshold
       }
     }
