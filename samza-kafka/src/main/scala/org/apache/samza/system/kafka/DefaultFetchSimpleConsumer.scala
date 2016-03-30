@@ -40,8 +40,8 @@ class DefaultFetchSimpleConsumer(host: scala.Predef.String, port: scala.Int, soT
 
     val response: FetchResponse = this.fetch(fbr.build())
     if(response.data != null)
-      logger.info(response.data.toList.map{ case (tp, data) => s"$tp => ${data.sizeInBytes}"}.mkString("*** Response Metadata:  ","\n", ""))
-    else logger.info("*** No response for defaultFetch")
+      logger.debug(response.data.toList.map{ case (tp, data) => s"$tp => ${data.sizeInBytes}"}.mkString("*** Response Metadata:  ","\n", ""))
+    else logger.debug("*** No response for defaultFetch")
     response
   }
 
