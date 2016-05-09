@@ -70,9 +70,9 @@ class TestRocksDbKeyValueStore
   def testFlush(): Unit = {
     val map = new util.HashMap[String, String]()
     val config = new MapConfig(map)
-    val flushOptions = new FlushOptions().setWaitForFlush(true)
     val options = new Options()
     options.setCreateIfMissing(true)
+    val flushOptions = new FlushOptions().setWaitForFlush(true)
     val rocksDB = RocksDbKeyValueStore.openDB(new File(System.getProperty("java.io.tmpdir")),
                                               options,
                                               config,
