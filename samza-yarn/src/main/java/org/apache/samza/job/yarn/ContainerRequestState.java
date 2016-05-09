@@ -18,18 +18,17 @@
  */
 package org.apache.samza.job.yarn;
 
-import org.apache.hadoop.yarn.api.records.Container;
-import org.apache.hadoop.yarn.client.api.AMRMClient;
-import org.apache.hadoop.yarn.client.api.async.AMRMClientAsync;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.hadoop.yarn.api.records.Container;
+import org.apache.hadoop.yarn.client.api.AMRMClient;
+import org.apache.hadoop.yarn.client.api.async.AMRMClientAsync;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class maintains the state variables for all the container requests and the allocated containers returned
@@ -122,14 +121,11 @@ public class ContainerRequestState {
         int requestCountOnThisHost = requestCount.get();
         List<Container> allocatedContainersOnThisHost = allocatedContainers.get(hostName);
         if (requestCountOnThisHost > 0) {
-          if (allocatedContainersOnThisHost == null) {
+          if (allocatedContainersOnThisHost == null || allocatedContainersOnThisHost.size() < requestCountOnThisHost) {
             log.debug("Saving the container {} in the buffer for {}", container.getId(), hostName);
             addToAllocatedContainerList(hostName, container);
-          } else {
-            if (allocatedContainersOnThisHost.size() < requestCountOnThisHost) {
-              log.debug("Saving the container {} in the buffer for {}", container.getId(), hostName);
-              addToAllocatedContainerList(hostName, container);
-            } else {
+          }
+          else {
               /**
                * The RM may allocate more containers on a given host than requested. In such a case, even though the
                * requestCount != 0, it will be greater than the total request count for that host. Hence, it should be
@@ -147,19 +143,9 @@ public class ContainerRequestState {
               addToAllocatedContainerList(ANY_HOST, container);
             }
           }
-        } else {
-          log.debug(
-              "This host was never requested. Hence, saving the container {} in the buffer for ANY_HOST",
-              new Object[]{
-                  hostName,
-                  requestCountOnThisHost,
-                  container.getId()
-              }
-          );
-          addToAllocatedContainerList(ANY_HOST, container);
         }
       }
-    } else {
+     else {
       log.debug("Saving the container {} in the buffer for ANY_HOST", container.getId());
       addToAllocatedContainerList(ANY_HOST, container);
     }
@@ -205,43 +191,57 @@ public class ContainerRequestState {
   public synchronized int releaseExtraContainers() {
     int numReleasedContainers = 0;
 
-    if (hostAffinityEnabled) {
-      if (requestsQueue.isEmpty()) {
-        log.debug("Container Requests Queue is empty.");
+    if (requestsQueue.isEmpty()) {
+      log.debug("Container Requests Queue is empty.");
 
+      if (hostAffinityEnabled) {
         List<String> allocatedHosts = getAllocatedHosts();
         for (String host : allocatedHosts) {
-          List<Container> containers = getContainersOnAHost(host);
-          if (containers != null) {
-            for (Container c : containers) {
-              log.info("Releasing extra container {} allocated on {}", c.getId(), host);
-              amClient.releaseAssignedContainer(c.getId());
-              numReleasedContainers++;
-            }
-          }
+          numReleasedContainers += releaseContainersForHost(host);
         }
-        clearState();
+      } else {
+        numReleasedContainers += releaseContainersForHost(ANY_HOST);
       }
-    } else {
-      if (requestsQueue.isEmpty()) {
-        log.debug("No more pending requests in Container Requests Queue.");
+      clearState();
+    }
+    return numReleasedContainers;
+  }
 
-        List<Container> availableContainers = getContainersOnAHost(ANY_HOST);
-        while(availableContainers != null && !availableContainers.isEmpty()) {
-          Container c = availableContainers.remove(0);
-          log.info("Releasing extra allocated container - {}", c.getId());
-          amClient.releaseAssignedContainer(c.getId());
-          numReleasedContainers++;
-        }
-        clearState();
+  /**
+   * Releases all allocated containers for the specified host.
+   * @param host  the host for which the containers should be released.
+   * @return      the number of containers released.
+   */
+  private int releaseContainersForHost(String host) {
+    int numReleasedContainers = 0;
+    List<Container> containers = getContainersOnAHost(host);
+    if (containers != null) {
+      for (Container c : containers) {
+        log.info("Releasing extra container {} allocated on {}", c.getId(), host);
+        amClient.releaseAssignedContainer(c.getId());
+        numReleasedContainers++;
       }
     }
     return numReleasedContainers;
   }
 
   /**
+   * Releases a container that was allocated and assigned but could not be started.
+   * e.g. because of a ConnectException while trying to communicate with the NM.
+   * This method assumes the specified container and associated request have already
+   * been removed from their respective queues.
+   *
+   * @param container the {@link Container} to release.
+   */
+  public void releaseUnstartableContainer(Container container) {
+    log.info("Releasing unstartable container {}", container.getId());
+    amClient.releaseAssignedContainer(container.getId());
+  }
+
+  /**
    * Clears all the state variables
    * Performed when there are no more unfulfilled requests
+   * This is not synchronized because it is private.
    */
   private void clearState() {
     allocatedContainers.clear();

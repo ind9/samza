@@ -62,14 +62,15 @@ Likewise, [run-am.sh](packaging.html) sets:
 -Dsamza.container.name=samza-application-master
 {% endhighlight %}
 
-These settings are very useful if you're using a file-based appender. For example, you can use a daily rolling appender by configuring log4j.xml like this:
+These settings are very useful if you're using a file-based appender. For example, you can use a rolling appender to separate log file when it reaches certain size by configuring log4j.xml like this:
 
 {% highlight xml %}
-<appender name="RollingAppender" class="org.apache.log4j.DailyRollingFileAppender">
+<appender name="RollingAppender" class="org.apache.log4j.RollingFileAppender">
    <param name="File" value="${samza.log.dir}/${samza.container.name}.log" />
-   <param name="DatePattern" value="'.'yyyy-MM-dd" />
+   <param name="MaxFileSize" value="256MB" />
+   <param name="MaxBackupIndex" value="20" />
    <layout class="org.apache.log4j.PatternLayout">
-    <param name="ConversionPattern" value="%d{yyyy-MM-dd HH:mm:ss} %c{1} [%p] %m%n" />
+    <param name="ConversionPattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} [%p] %m%n" />
    </layout>
 </appender>
 {% endhighlight %}
@@ -104,7 +105,7 @@ Samza provides a StreamAppender to publish the logs into a specific system. You 
    <!-- optional -->
    <param name="StreamName" value="EpicStreamName"/>
    <layout class="org.apache.log4j.PatternLayout">
-     <param name="ConversionPattern" value="%X{containerName} %X{jobName} %X{jobId} %d{yyyy-MM-dd HH:mm:ss} %c{1} [%p] %m%n" />
+     <param name="ConversionPattern" value="%X{containerName} %X{jobName} %X{jobId} %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} [%p] %m%n" />
    </layout>
 </appender>
 {% endhighlight %}

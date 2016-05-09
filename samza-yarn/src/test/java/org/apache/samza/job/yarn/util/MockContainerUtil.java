@@ -18,6 +18,10 @@
  */
 package org.apache.samza.job.yarn.util;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.client.api.NMClient;
@@ -25,14 +29,13 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.samza.config.Config;
 import org.apache.samza.job.yarn.ContainerUtil;
 import org.apache.samza.job.yarn.SamzaAppState;
+import org.apache.samza.job.yarn.SamzaContainerLaunchException;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 
 public class MockContainerUtil extends ContainerUtil {
+  private final List<MockContainerListener> mockContainerListeners = new ArrayList<MockContainerListener>();
   public final Map<String, List<Container>> runningContainerList = new HashMap<>();
+  public Exception containerStartException = null;
 
   public MockContainerUtil(Config config, SamzaAppState state, YarnConfiguration conf, NMClient nmClient) {
     super(config, state, conf);
@@ -40,7 +43,7 @@ public class MockContainerUtil extends ContainerUtil {
   }
 
   @Override
-  public void runContainer(int samzaContainerId, Container container) {
+  public void runContainer(int samzaContainerId, Container container) throws SamzaContainerLaunchException {
     String hostname = container.getNodeHttpAddress().split(":")[0];
     List<Container> list = runningContainerList.get(hostname);
     if (list == null) {
@@ -52,10 +55,25 @@ public class MockContainerUtil extends ContainerUtil {
       runningContainerList.put(hostname, list);
     }
     super.runContainer(samzaContainerId, container);
+
+    for (MockContainerListener listener : mockContainerListeners) {
+      listener.postRunContainer(runningContainerList.size());
+    }
   }
 
   @Override
-  public void startContainer(Path packagePath, Container container, Map<String, String> env, String cmd) {
+  public void startContainer(Path packagePath, Container container, Map<String, String> env, String cmd) throws
+                                                                                                         SamzaContainerLaunchException {
+    if (containerStartException != null) {
+      throw new SamzaContainerLaunchException(containerStartException);
+    }
   }
 
+  public void registerContainerListener(MockContainerListener listener) {
+    mockContainerListeners.add(listener);
+  }
+
+  public void clearContainerListeners() {
+    mockContainerListeners.clear();
+  }
 }

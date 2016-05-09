@@ -40,19 +40,24 @@ object RocksDbKeyValueStore extends Logging {
         ttl = storeConfig.getLong("rocksdb.ttl.ms")
 
         // RocksDB accepts TTL in seconds, convert ms to seconds
-        if (ttl < 1000)
-        {
-          warn("The ttl values requested for %s is %d, which is less than 1000 (minimum), using 1000 instead",
-               storeName,
-               ttl)
-          ttl = 1000
+        if(ttl > 0) {
+          if (ttl < 1000)
+          {
+            warn("The ttl values requested for %s is %d, which is less than 1000 (minimum), using 1000 instead",
+              storeName,
+              ttl)
+            ttl = 1000
+          }
+          ttl = ttl / 1000
         }
-        ttl = ttl / 1000
+        else {
+          warn("Non-positive TTL for RocksDB implies infinite TTL for the data. More Info -https://github.com/facebook/rocksdb/wiki/Time-to-Live")
+        }
 
         useTTL = true
         if (isLoggedStore)
         {
-          error("%s is a TTL based store, changelog is not supported for TTL based stores, use at your own discretion" format storeName)
+          warn("%s is a TTL based store, changelog is not supported for TTL based stores, use at your own discretion" format storeName)
         }
       }
       catch
