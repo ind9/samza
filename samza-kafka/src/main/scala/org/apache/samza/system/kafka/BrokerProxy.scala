@@ -68,7 +68,7 @@ class BrokerProxy(
   val sleepMSWhileNoTopicPartitions = 100
 
   /** What's the next offset for a particular partition? **/
-  val nextOffsets:concurrent.Map[TopicAndPartition, Long] = new ConcurrentHashMap[TopicAndPartition, Long]()
+  val nextOffsets: ConcurrentHashMap[TopicAndPartition, Long] = new ConcurrentHashMap[TopicAndPartition, Long]()
 
   /** Block on the first call to get message if the fetcher has not yet returned its initial results **/
   // TODO: It should be sufficient to just use the count down latch and await on it for each of the calls, but
@@ -118,7 +118,7 @@ class BrokerProxy(
       val offset = nextOffsets.remove(tp)
       metrics.topicPartitions(host, port).set(nextOffsets.size)
       debug("Removed %s" format tp)
-      offset
+      Option(offset)
     } else {
       warn("Asked to remove topic and partition %s, but not in map (keys = %s)" format (tp, nextOffsets.keys.mkString(",")))
       None
